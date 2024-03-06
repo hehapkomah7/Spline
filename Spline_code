@@ -1,0 +1,84 @@
+package spline;
+
+public class Spline {
+    double[] xi;
+    double[] M;
+    double[] C1;
+    double[] C2;
+    int N;
+
+    Spline(double[] xi, double[] yi, double ap, double bp) {
+        this.xi = xi;
+        N = xi.length - 1;
+
+        double[] h = new double[N];
+        double[] bottom = new double[N + 1];
+        double[] diag = new double[N + 1];
+        double[] top = new double[N + 1];
+        double[] right = new double[N + 1];
+        C1 = new double[N];
+        C2 = new double[N];
+
+        for (int i = 0; i < N; i++) {
+            h[i] = xi[i + 1] - xi[i];
+        }
+
+        diag[0] = h[0] / 3;
+        top[0] = h[0] / 6;
+        right[0] = -ap + (yi[1] - yi[0]) / h[0];
+
+        bottom[N] = h[N - 1] / 6;
+        diag[N] = h[N - 1] / 3;
+        right[N] = bp - (yi[N] - yi[N - 1]) / h[N - 1];
+
+
+        for (int i = 1; i < N; i++) {
+            bottom[i] = h[i - 1] / 6;
+            diag[i] = 2 * (h[i] + h[i - 1]) / 6;
+            top[i] = h[i] / 6;
+            right[i] = (yi[i + 1] - yi[i]) / h[i] - (yi[i] - yi[i - 1]) / h[i - 1];
+        }
+        M = progonka(diag, top, bottom, right);
+
+        for (int i = 0; i < N; i++) {
+            C2[i] = yi[i] - M[i] * h[i] * h[i] / 6.0;
+            C1[i] = (yi[i + 1] - yi[i]) / h[i] + h[i] * (M[i] - M[i + 1]) / 6.0;
+        }
+    }
+
+    double[] progonka(double[] diag, double[] top, double[] bottom, double[] right) {
+        for (int i = 1; i < diag.length; i++) {
+            double m = bottom[i] / diag[i - 1];
+            diag[i] = diag[i] - m * top[i - 1];
+            right[i] = right[i] - m * right[i - 1];
+        }
+
+        double[] res = new double[diag.length];
+        res[diag.length - 1] = right[diag.length - 1] / diag[diag.length - 1];
+
+        for (int i = diag.length - 2; i >= 0; i--)
+            res[i] = (right[i] - top[i] * res[i + 1]) / diag[i];
+
+        return res;
+    }
+
+    double get(double t) {
+        int i = 0;
+        while (i < N && t >= xi[i]) {
+            i++;
+        }
+        i = i - 1;
+        if (i >= N) {
+            i = N - 1;
+        }
+
+        double dx1 = (t - xi[i + 1]);
+        double dx2 = (t - xi[i]);
+        double hi = xi[i + 1] - xi[i];
+        double S = -M[i] * dx1 * dx1 * dx1 / (6 * hi)
+                + M[i + 1] * dx2 * dx2 * dx2 / (6 * hi)
+                + C1[i] * dx2
+                + C2[i];
+        return S;
+    }
+}
