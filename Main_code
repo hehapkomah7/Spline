@@ -1,0 +1,110 @@
+package spline;
+
+import javafx.application.Application;
+import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.paint.Color;
+import javafx.stage.Stage;
+
+public class Main extends Application {
+    double a = 0;
+    double b = 25;
+    int N = 10;
+    double ap = -5;
+    double bp = 10;
+
+    Canvas canvas = new Canvas(800, 800);
+    Interpolator xInterpolator;
+    Interpolator yInterpolator;
+    Spline spline;
+
+    double testFunc(double t) {
+        return Math.sin(t) + Math.exp(t / 10);
+    }
+
+    @Override
+    public void start(Stage primaryStage) throws Exception {
+        BorderPane borderPane = new BorderPane();
+        Scene scene = new Scene(borderPane, canvas.getWidth(), canvas.getHeight());
+        borderPane.setCenter(canvas);
+        primaryStage.setScene(scene);
+
+        setParams();
+        createSpline();
+        drawAxes();
+        drawFunc();
+        drawSpline();
+        printApprox(a);
+        printApprox(b);
+
+        primaryStage.show();
+    }
+
+    void setParams() {
+        double range = b - a;
+        xInterpolator = new Interpolator(0, canvas.getWidth(), a, b);
+        yInterpolator = new Interpolator(canvas.getHeight(), 0, -range / 2, range / 2);
+    }
+
+    void createSpline() {
+        double[] xi = new double[N + 1];
+        double[] yi = new double[N + 1];
+
+        double h = (b - a) / N;
+        for (int i = 0; i <= N; i++) {
+            xi[i] = i * h + a;
+            yi[i] = testFunc(xi[i]);
+        }
+
+        spline = new Spline(xi, yi, ap, bp);
+    }
+
+    void drawAxes() {
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        gc.setStroke(Color.GRAY);
+        gc.strokeLine(xInterpolator.toLinear(0), 0, xInterpolator.toLinear(0), canvas.getHeight());
+        gc.strokeLine(0, yInterpolator.toLinear(0), canvas.getWidth(), yInterpolator.toLinear(0));
+//        double h = (b - a) / N;
+//        for (int i = 0; i < N; i++) {
+//            gc.strokeLine(xInterpolator.toLinear(i * h + a), 0, xInterpolator.toLinear(i * h + a), canvas.getHeight());
+//        }
+    }
+
+    void drawFunc() {
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        gc.beginPath();
+        gc.setStroke(Color.BLACK);
+        gc.moveTo(0, yInterpolator.toLinear(testFunc(xInterpolator.toValue(0))));
+        int width = (int) canvas.getWidth();
+        for (int i = 1; i <= width; i++) {
+            double x = xInterpolator.toValue(i);
+            double s = yInterpolator.toLinear(testFunc(x));
+            gc.lineTo(i, s);
+        }
+        gc.stroke();
+    }
+
+    void drawSpline() {
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        gc.beginPath();
+        gc.setStroke(Color.RED);
+        gc.moveTo(0, yInterpolator.toLinear(spline.get(xInterpolator.toValue(0))));
+        int width = (int) canvas.getWidth();
+        for (int i = 1; i <= width; i++) {
+            double x = xInterpolator.toValue(i);
+            double s = yInterpolator.toLinear(spline.get(x));
+            gc.lineTo(i, s);
+        }
+        gc.stroke();
+    }
+
+    void printApprox(double x) {
+        double epsilon = 0.00001;
+        double f1 = spline.get(x + epsilon);
+        double f2 = spline.get(x);
+        double p = (f1 - f2) / epsilon;
+        System.out.println("s'(" + x + ") = " + p);
+    }
+}
